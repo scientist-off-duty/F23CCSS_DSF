@@ -97,33 +97,20 @@ SelfvOther_uuvcm_table <- tbl_uvregression(
 SelfvOther_uuvcm_table
 
 # stacking two tbl_regression objects w/ tbl_stack()
-t1 <-
-    glm(cites ~ journal, pages, family = gaussian) %>%
+t1 <- glm(cites ~ equations, family = gaussian, data = EquationCitations) %>%
     tbl_regression(
-        exponentiate = TRUE,
-        label = list(pages ~ "Treatment (unadjusted)")
-    )
+        exponentiate = TRUE)
 
-t2 <-
-    glm(cites ~ mainequations, selfcites, othercites, cites, family = gaussian) %>%
+t2 <- glm(cites ~ journal + pages + equations, family = gaussian, data = EquationCitations) %>%
     tbl_regression(
-        include = "selfcits",
-        exponentiate = TRUE,
-        label = list(trt ~ "Treatment (adjusted)")
-    )
+        exponentiate = TRUE)
 
 tbl_stack_ex1 <- tbl_stack(list(t1, t2))
+tbl_stack_ex1
 
-
-# tbl_stack()
 
 # Modifying aesthetics (ADD BACK AFTER CORRECTING) ----
-glm(response ~ trt + age + ttdeath + grade, trial, family = binomial) %>% 
-  tbl_regression(
-    #pvalue_fun   = ~style_pvalue(.x, digits = 3),
-    exponentiate = TRUE
-  ) %>% 
-  
+
   # add_* helpers
   add_n(location = "level") %>%
   add_nevent(location = "level") %>%  
@@ -150,7 +137,7 @@ glm(response ~ trt + age + ttdeath + grade, trial, family = binomial) %>%
 library(gt)
 trial %>%
   # create a gtsummary table
-  tbl_summary(by = trt) %>%
+  tbl_summary(by = journal) %>%
   # convert from gtsummary object to gt object
   as_gt() %>%
   # modify with gt functions
@@ -161,22 +148,5 @@ trial %>%
   ) %>% 
   tab_options(
     table.font.size = "small",
-    data_row.padding = px(1)) 
+    data_row.padding = px(1))
 
-# themes()
-
-# JUNKYARD ----
-
-# get descriptive stats for subgroup within a treatment group
-SelfvOther %>%
-  tbl_strata(
-    strata = selfcites,
-    ~.x) %>%
-tbl_summary( by = journal)
-
-# Question: How to find variable types? Sol: DF docs, class(), typeof(), is.numeric()/is.factor()
-# Numeric (1.2, 5, 7, 3.14159)
-# Integer (1, 2, 3, 4, 5)
-# Complex (i + 4)
-# Logical (TRUE / FALSE)
-# Character ("a", "apple")
