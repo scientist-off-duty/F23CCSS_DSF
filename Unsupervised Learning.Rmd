@@ -1,0 +1,251 @@
+---
+title: "Unsupervised Learning"
+author: "Aishat Sadiq"
+date: "11/9/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Unsupervised Learning
+
+## K-Means and Hierarchical Clustering
+
+Hierarchical clustering introduces a group dissimilarity measure, which is commonly picked to be one of complete linkage, single linkage, and average linkage.
+
+w/gene data? df \<- t(read.csv("gene_data.csv", header=F))
+
+```{r K-Means Clustering}
+?kmeans()
+
+set.seed(1)
+km.out <- kmeans(X, 4, nstart=15)
+
+plot(X, col=km.out$cluster, pch=1, cex=2, lwd=2)
+points(X, col=c(1,4,3,2)[which], pch=19)
+
+
+
+###########################################
+###  Foodstuffs example 
+###########################################
+
+# Consider the food.std data frame given above.
+
+# A K-means clustering with k = 5:
+
+# Note that the stability of the result can be improved by increasing the maximum number 
+# of iterations and using multiple random starts:
+
+food.k5 <- kmeans(food.std, centers=5, iter.max=100, nstart=25)
+food.k5
+
+# Let's try k=4:
+
+food.k4 <- kmeans(food.std, centers=4, iter.max=100, nstart=25)
+food.k4
+
+# Printing the clustering vector for the 4-cluster solution:
+
+food.k4$cluster
+
+food.k4.clust <- lapply(1:4, function(nc) Food[food.k4$cluster==nc])  
+food.k4.clust   # printing the clusters in terms of the Food labels
+
+############# Visualization of Clusters:
+
+### Via the scatterplot matrix:
+
+pairs(food[,-1], panel=function(x,y) text(x,y,food.k4$cluster))
+
+# Cluster 1 foods tend to be high in calcium. (this comment does not reflect all runs of the algorithm)
+# Cluster 4 foods tend to be high in fat. (this comment does not reflect all runs of the algorithm)
+
+
+### Via a plot of the scores on the first 2 principal components, 
+### with the clusters separated by color:
+
+food.pc <- princomp(food[,-1],cor=T)
+
+# Setting up the colors for the 5 clusters on the plot:
+my.color.vector <- rep("green", times=nrow(food))
+my.color.vector[food.k4$cluster==2] <- "blue"
+my.color.vector[food.k4$cluster==3] <- "red"
+my.color.vector[food.k4$cluster==4] <- "orange"
+
+# Plotting the PC scores:
+
+par(pty="s")
+plot(food.pc$scores[,1], food.pc$scores[,2], ylim=range(food.pc$scores[,1]), 
+     xlab="PC 1", ylab="PC 2", type ='n', lwd=2)
+text(food.pc$scores[,1], food.pc$scores[,2], labels=Food, cex=0.7, lwd=2,
+     col=my.color.vector)
+
+# Cluster 1 is the "canned seafood" cluster.  (this comment does not reflect all runs of the algorithm)
+# Cluster 2 is the clams cluster.  (this comment does not reflect all runs of the algorithm)
+
+## NOTE:  The default for the kmeans function in R is the Hartigan-Wong (1979) algorithm.
+## The MacQueen algorithm (1967) can be used by altering the code to, say:
+##                kmeans(food.std, centers=4,algorithm="MacQueen")
+## You can try it in this case -- I don't think the MacQueen algorithm produces as good of a result.
+
+
+```
+
+```{r Hierarchical Clustering}
+#Hierarchical Clustering using complete, single, and average linkage, with Euclidean distance as the dissimilarity measure
+?hclust()
+
+hc.complete <- hclust(dist(x), method="complete")
+hc.average <- hclust(dist(x), method="average")
+hc.single <- hclust(dist(x), method="single")
+
+#plot the dendrograms obtained using each linkage
+plot(hc.complete, main="Complete Linkage", cex=.9)
+plot(hc.average, main="Average Linkage", cex=.9)
+plot(hc.single, main="Single Linkage", cex=.9)
+
+#hierarchical clustering using the correlation-based distance
+as.dist() - #converts an arbitrary square symmetric matrix into a form that the hclust() function recognizes as a distance matrix
+```
+
+```{r Clustering with Categorical Data}
+> library(e1071)
+> mushroom <- read.csv("mushroom.csv")
+> distm <- as.dist(hamming.distance(as.matrix(mushroom)[, 2:14]))
+> hc.complete <- hclust(distm, method="complete")
+plot(hc.complete, main="Complete Linkage", cex=.9)
+> hc.cut <- cutree(hc.complete, 8)
+
+> table(mushroom[,1], hc.cut)
+
+```
+
+# junkyard
+
+## Cross Validation
+
+The validation set approach and LOOCV can be thought of a two "extremes" of cross-\
+validation. The method of k-fold cross-validation aims to interpolate between the two.
+
+```{r The Validation Set Approach}
+
+#pick half of the observations to be our training data
+set.seed(1)
+train_id = sample(nrow(corollas), nrow(corollas)/2)
+
+#fit a linear regression model using only the training set
+lm.fit = lm(Price~Age_08_04+KM, data=corollas, subset=train_id)
+
+#calculate the MSE over the validation set
+mean((Price-predict(lm.fit, corollas))[-train id]^2)
+
+#fit models with high-order terms of the predictors 
+# returns the MSE on the complement of the training set
+
+eval_lm <- function(deg) {
+lm.fit <- lm(Price~poly(Age_08_04, deg)+poly(KM, deg), data=corollas,
+subset=train_id)
+return(mean((Price-predict(lm.fit, corollas))[-train_id]^2)
+}
+
+#Calculate the MSE for regressions models with degree up to 5. 
+#Note, this may take a whilefor R to run. 
+mses = rep(0,5)
+for (i in 1:5) {
+mses[i] <- eval_lm(i, train_ind)
+ }
+
+```
+
+The MSE drops significantly when switching from degree 1 to 2. Further increases to the degree result in relatively insignificant improvements to the MSE. Therefore, we expect that the quadratic model can ''explain'' the price function well.
+
+```{r Leave-One-Out Cross-Validation}
+# Leave-One-Out Cross-Validation  (LOOCV)
+
+#fit and validate models of degree up to 5
+cv.error=rep(0,5)
+for (i in 1:5) {
+glm.fit = glm(Price~poly(Age_08_04, i)+poly(KM,i), data = corollas)
+cv.error[i] = cv.glm(corollas, glm.fit)$delta[1]
+}
+plot(cv.error, type="b")
+```
+
+The p-values of the linear and quadratic terms of Age 08 04 and KM are significant (below 0.05), whereas the cubic terms are not. This suggests that only the cubic terms are likely not useful in predicting the response. (Note that this observation may be just a coincidence. In general the p-values and the cross validation results may or may not be consistent with each other, especially when the number of predictors is large.)
+
+```{r k-fold Cross-Validation}
+?cv.glm
+
+#perform k-fold cross-validation w/ polynomials of degrees one to five, and then plot the corresponding cross-validation errors for k ∈ {5, 10}. Computes the cross-validation error for all configurations of parameters
+#test / generalization error of a fitted model
+#k-fold cross validation tries to prevent overfitting by making sure that the data used for validation and training at each “fold” do not overlap.
+error[i] = cv.glm(data, glm.fit, K=num_folds)$delta[1]
+
+cv.error=matrix(rep(0, 10), ncol=2)
+for (deg in 1:5) {
+glm.fit = glm(Price~poly(Age_08_04, deg)+poly(KM,deg), data = corollas)
+cv.error[deg, 1] = cv.glm(corollas, glm.fit, K=5)$delta[1]
+cv.error[deg, 2] = cv.glm(corollas, glm.fit, K=10)$delta[1]
+}
+plot(cv.error[,1], type="b", col="blue")
+points(cv.error[,2], type="b", col="green", ylab="CV Error", xlab="deg")
+legend(3, c("K = 5", "K = 10"), col=c("blue", "green"))
+```
+
+The LOOCV is the slowest, because it requires fitting the model n times. The validation set approach is the fastest as it only fits the model once.) The speed of the k-fold CV depends on the choice of k.\
+
+Because of randomness in splitting the data, k-fold CV and the validation set approach can produce different estimates. For LOOCV the results are always the same, because LOOCV averages over all n possible ways of holding out one validation point.
+
+bagging is simply a special case of a random forest with m = p
+
+```{r bagging}
+set.seed(2)
+> carseats <- carseats %>% select(-High)
+> train <- sample(1:nrow(carseats), 200)
+> carseats.test <- carseats[-train,]
+> sales.test <- carseats.test$Sales
+> tree.carseats <- tree(Sales~., carseats, subset=train)
+> tree.pred <- predict(tree.carseats, carseats.test)
+> tree.mse_nocv <- mean((tree.pred - sales.test)^2)
+> cv.carseats <- cv.tree(tree.carseats)
+> bestSize <- cv.carseats$size[which.min(cv.carseats$dev)]
+> prune.carseats <- prune.tree(tree.carseats, best=bestSize)
+> tree.pred <- predict(prune.carseats, carseats.test)
+> tree.mse_cv <- mean((tree.pred - sales.test)^2)
+> bag.carseats <- randomForest(Sales~., carseats, subset=train,
++ mtry=10, importance=TRUE)
+> bag.pred <- predict(bag.carseats, newdata=carseats.test)
+> mean((bag.pred - carseats.test$Sales)^2)
+
+```
+
+```{r boosting}
+hitters <- na.omit(Hitters)
+hitters$Salary <- log(hitters$Salary)
+
+#split df
+hitters.train <- hitters[train_ind,]
+hitters.test <- hitters[-train_ind,]
+
+hitters.gbm <- gbm(Salary~., distribution="gaussian", data=hitters.train, n.trees=1000, shrinkage=lambda[i])
+
+
+```
+
+Prediction
+
+```{r Prediction}
+## We can use the predict function
+newdata <- data.frame(abs_spread = 5, div_game = 1, reg_playoff = "REG")
+# predicted log of mean
+predict(object = mod_possion, newdata = newdata, type="link")
+
+# predicted mean
+predict(object = mod_possion, newdata = newdata, type="response")
+
+#confidence intervals
+#confint(mod_possion)
+```

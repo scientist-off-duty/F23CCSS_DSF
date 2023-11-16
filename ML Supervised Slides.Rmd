@@ -1,0 +1,42 @@
+---
+title: 'Machine Learning w/ R: Supervsed'
+author: "Aishat Sadiq"
+date: "11/9/2023"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+example code: <https://www.john-ros.com/Rcourse/unsupervised.html#clustering-in-r>
+
+## Slide with Bullets
+
+-   Bullet 1
+-   Bullet 2
+-   Bullet 3
+
+## Slide with packages
+
+```{r packages}
+library(stats)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```

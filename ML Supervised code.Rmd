@@ -1,0 +1,160 @@
+---
+title: "ML Supervised"
+author: "Aishat Sadiq"
+date: "11/8/2023"
+output: html_document
+---
+
+## Agenda
+
+-   What's the difference?​
+
+    -   Supervised v Unsupervised​
+
+        -   Applications of Supervised Learning​
+
+    -   Regression v Classification v Clustering​
+
+    -   Live Coding: Prep​
+
+-   Practice running classifying algorithms​
+
+    -   Logistic regression, K Nearest Neighbor, Decision Tree​
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+#setwd("Library/Mobile Documents/iCloud~md~obsidian/Documents/PhD/CCSS Data Fellow")
+
+#install neccessary packages
+#install.packages(stats)
+#install.packages(tree)
+#install.packages(rpart.plot)
+
+#load libraries
+library(stats)
+library(tidyverse)
+library(class)
+library(rpart)     #used to construct classification and regression trees
+library(rpart.plot)
+library(caret)
+library(haven) #need for read_dta
+library(readr)
+
+#load df
+discrimination <- read_csv("/Users/aishatsadiq/Library/Mobile Documents/iCloud~md~obsidian/Documents/PhD/CCSS Data Fellow/labor_market_discrimination.csv")
+View(discrimination)
+
+dim(discrimination)
+head(discrimination)
+summary(discrimination)
+attributes(discrimination)
+Hmisc::describe(discrimination)
+
+```
+
+# Basic Classification Algorithms
+
+## Logistic regression
+
+Can we predict call backs based on applicant race, sex, education, and job experience?
+
+```{r Logit}
+colnames(discrimination)
+
+discrimination_binom <- glm(call ~ race + education + n_jobs + yearsexp + sex, family = "binomial", data = discrimination)
+summary(discrimination_binom)
+
+```
+
+Interpretation: Holding education, number of jobs listed on resume, number of years of work experience on the resume, Sex ('m' = male); and Race, with ('b' = black; 'w' = white) constant, white applicants have a significantly, .440420, greater odds of receiving a callback than black applicants.
+
+## Poisson Regression
+
+```{r Poisson}
+
+#Same as Logistic
+discrimination_poisson1 <- glm(call ~ race + education + n_jobs + yearsexp + sex, family = "poisson", data = discrimination)
+summary(discrimination_poisson)
+
+# Can we predict applicant education level based on applicant race, sex, and education?
+colnames(discrimination)
+
+discrimination_poisson2 <- glm(education ~ race + sex, family = "poisson", data = discrimination)
+summary(discrimination_poisson2)
+
+```
+
+Interpretation: If given two applicants who are male, the white applicant is exp(.000919) times more likely to be educated than the estimated mean for a black applicant
+
+## K Nearest Neighbors
+
+Note: Neither KNN nor linear/logistic regression deals with factor variables directly. The lm() and glm() functions in R automatically convert factors to dummies, but the built-in function knn() for KNN does not.
+
+```{r}
+# Split the data into training and test sets
+set.seed(31415)
+discrimination <- na.omit(discrimination)
+train_index <- sample(1:nrow(discrimination), nrow(discrimination)*0.7)
+
+# train dataset formation
+train_set <- discrimination[train_index, ]
+na.rpart(train_set)
+train_set <- na.rpart(train_set)
+train_set
+
+# test dataset formation
+test_set <- discrimination[-train_index, ]
+test_set <- na.rpart(test_set)
+test_set
+#function help page
+?class::knn()
+
+#Run KNN for K = 1, 3, 5, 10, 20, 50 and compare error rates
+
+?trainControl
+trainControl <- trainControl(method="repeatedcv", number=10, repeats=3)
+fit.knn <- train(call~., data=train_set, method="knn",
+                 metric="Accuracy" ,trControl=trainControl)
+knn.k1 <- fit.knn$bestTune # keep this Initial k for testing with knn() function in next section
+print(fit.knn)
+plot(fit.knn)
+
+#This chart shows the Elbow k = 7 with accuracy greater tha 91% for training dataset
+
+prediction <- predict(fit.knn, newdata = test_set)
+cf <- confusionMatrix(prediction, test_set$call)
+print(cf)
+```
+
+##  Decision trees
+
+```{r classification Trees}
+
+#ensure columns are factor type, so that when we call the tree() function a classification tree is created
+discrimination$call <- as.factor(discrimination$call)
+discrimination$race <- as.factor(discrimination$race)
+discrimination$education <- as.factor(discrimination$education)
+discrimination$ofjobs <- as.factor(discrimination$ofjobs)
+discrimination$yearsexp <- as.factor(discrimination$yearsexp)
+discrimination$sex <- as.factor(discrimination$sex)
+
+#fit a tree using all predictors except Sales (since including it would give us a trivial tree) w/o estimating test error by splitting df
+?rpart
+
+#all vars - BV Tradeoff
+tree.discrimination1 <- rpart(call ~ , discrimination, method = "poisson")
+summary(tree.discrimination1)
+rpart.plot(tree.discrimination1)
+
+#formatting issue
+tree.discrimination2 <- rpart(call ~ race + education + ofjobs + yearsexp + sex, discrimination, method = "poisson")
+summary(tree.discrimination2)
+rpart.plot(tree.discrimination2)
+
+#correct formatting
+tree.discrimination3 <- rpart(call ~ race + adid + yearsexp + kind, discrimination, method = "class", cp=0.00001)
+summary(tree.discrimination3)
+rpart.plot(tree.discrimination3, main = "Decision Tree for Discrimination DF")
+```
+
+# 
